@@ -36,4 +36,3 @@ check_user "$username"
 
 echo "Guess the secret number between 1 and 1000:"
 guess_number
--- fix 
