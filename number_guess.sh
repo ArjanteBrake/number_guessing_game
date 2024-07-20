@@ -1,38 +1,62 @@
 #!/bin/bash
 
-# Generate a random number between 1 and 1000
-secret_number=$(( RANDOM % 1000 + 1 ))
-
-# Function to handle user input and guessing
-guess_number() {
-  # Implementation here
+# Function to check if input is an integer
+is_integer() {
+  [[ "$1" =~ ^[0-9]+$ ]]
 }
 
-check_user() {
-  username=$1
-  if grep -q "^$username:" database.txt 2>/dev/null; then
-    games_played=$(grep "^username:" database.txt | cut -d ':' -f
-2)    
-    best_game=$(grep "^username:" database.txt | cut -d ':' -f 3)
-    echo "Welcome back, $username! You have played $games_played games
-    , and your best game took $best_game guesses."
-    return 0
-  else 
-    echo "Welcome, $username! It looks like this is your first time here."
-    return 1
-  fi
-}
+# Random number generation
+SECRET_NUMBER=$(( RANDOM % 1000 + 1 ))
 
-
-# Main game logic
+# Prompt for username
 echo "Enter your username:"
-read username
+read USERNAME
 
-# Check if username exists in database
-# Ensure username is not longer than 22 characters
-username="${username:0:22}"
+# Validate username length
+if [[ ${#USERNAME} -gt 22 ]]; then
+  echo "Username must be 22 characters or fewer."
+  exit 1
+fi
 
-check_user "$username"
+# Check if username exists in the database
+if [[ -f "user_data.txt" && $(grep -c "^$USERNAME:" user_data.txt) -gt 0 ]]; then
+  USER_DATA=$(grep "^$USERNAME:" user_data.txt)
+  GAMES_PLAYED=$(echo $USER_DATA | cut -d ':' -f 2)
+  BEST_GAME=$(echo $USER_DATA | cut -d ':' -f 3)
+  echo "Welcome back, $USERNAME! You have played $GAMES_PLAYED games, and your best game took $BEST_GAME guesses."
+else
+  echo "Welcome, $USERNAME! It looks like this is your first time here."
+  GAMES_PLAYED=0
+  BEST_GAME=1000
+fi
 
+# Start guessing game
 echo "Guess the secret number between 1 and 1000:"
-guess_number
+GUESSES=0
+while true; do
+  read GUESS
+  ((GUESSES++))
+  if ! is_integer "$GUESS"; then
+    echo "That is not an integer, guess again:"
+  elif (( GUESS < SECRET_NUMBER )); then
+    echo "It's higher than that, guess again:"
+  elif (( GUESS > SECRET_NUMBER )); then
+    echo "It's lower than that, guess again:"
+  else
+    echo "You guessed it in $GUESSES tries. The secret number was $SECRET_NUMBER. Nice job!"
+    break
+  fi
+done
+
+# Update user data
+((GAMES_PLAYED++))
+if (( GUESSES < BEST_GAME )); then
+  BEST_GAME=$GUESSES
+fi
+
+# Save user data
+grep -v "^$USERNAME:" user_data.txt > temp.txt
+echo "$USERNAME:$GAMES_PLAYED:$BEST_GAME" >> temp.txt
+mv temp.txt user_data.txt
+
+# End of script
